@@ -4,12 +4,9 @@ import android.content.Context
 import android.os.Bundle
 import android.text.format.DateFormat
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
+import android.view.*
+import android.view.View.*
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -17,6 +14,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.android.synthetic.main.fragment_crime_list.*
 import java.util.*
 
 private const val TAG = "CrimeListFragment"
@@ -27,6 +25,9 @@ class CrimeListFragment : Fragment() {
     interface Callbacks {
         fun onCrimeSelected(crimeId: UUID)
     }
+    private lateinit var emptyMessage: TextView
+    private lateinit var emptyButton: Button
+    private lateinit var emptyView: LinearLayout
     private var callbacks: Callbacks? = null
     private lateinit var crimeRecyclerView: RecyclerView
     private var adapter: CrimeAdapter? = CrimeAdapter()
@@ -37,12 +38,43 @@ class CrimeListFragment : Fragment() {
         super.onAttach(context)
         callbacks = context as Callbacks?
     }
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        inflater.inflate(R.menu.fragment_crime_list, menu)
+    }
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.new_crime -> {
+                val crime = Crime()
+                crimeListViewModel.addCrime(crime)
+                callbacks?.onCrimeSelected(crime.id)
+                true
+            }
+            else -> return super.onOptionsItemSelected(item)
+        }
+    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setHasOptionsMenu(true)
+    }
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_crime_list, container, false)
+        emptyButton = view.findViewById(R.id.empty_button)
+        emptyButton.text = "Add a crime"
+        emptyMessage = view.findViewById(R.id.empty_message)
+        emptyMessage.text = "There are no crimes"
+        emptyView = view.findViewById(R.id.crime_empty_view)
+        emptyButton.setOnClickListener(){
+            val crime = Crime()
+            crimeListViewModel.addCrime(crime)
+            callbacks?.onCrimeSelected(crime.id)
+            true
+        }
+
         crimeRecyclerView =
             view.findViewById(R.id.crime_recycler_view) as RecyclerView
         crimeRecyclerView.layoutManager = LinearLayoutManager(context)
@@ -57,6 +89,11 @@ class CrimeListFragment : Fragment() {
                 crimes?.let {
                     Log.i(TAG, "Got crimes ${crimes.size}")
                     updateUI(crimes)
+                    crimeRecyclerView.setVisibility(GONE)
+                    if (crimes.size > 0){
+                        emptyView.setVisibility(GONE)
+                        crimeRecyclerView.setVisibility(VISIBLE)
+                    }
                 }
             })
     }
